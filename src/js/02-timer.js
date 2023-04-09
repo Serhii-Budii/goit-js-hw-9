@@ -1,71 +1,79 @@
 import flatpickr from 'flatpickr';
-import Notiflix from 'notiflix';
-import 'notiflix/dist/notiflix-3.2.6.min.css';
 import 'flatpickr/dist/flatpickr.min.css';
-import 'flatpickr/dist/themes/confetti.css'; 
-import { Ukrainian } from 'flatpickr/dist/l10n/uk.js'; 
+import Notiflix from 'notiflix';
 
-const startBtn = document.querySelector('[data-start]');
-startBtn.disabled = true;
-startBtn.classList.add('js-main-button');
+const date = document.querySelector('#datetime-picker');
+const btn = document.querySelector('[data-start]');
+const day = document.querySelector('[data-days]');
+const hour = document.querySelector('[data-hours]');
+const min = document.querySelector('[data-minutes]');
+const sec = document.querySelector('[data-seconds]');
+const spans = document.querySelectorAll('.value');
 
-const daysEl = document.querySelector('[data-days]');
-const hoursEl = document.querySelector('[data-hours]');
-const minutesEl = document.querySelector('[data-minutes]');
-const secondsEl = document.querySelector('[data-seconds]');
+let timerId = null;
 
-const myInput = document.querySelector('.myInput');
-const fp = flatpickr(myInput, {
-  locale: Ukrainian,
-  enable: [
-    {
-      from: 'today',
-      to: '2099-12-31'
-    }],
+btn.disabled = true;
+
+flatpickr(date, {
   enableTime: true,
-  allowInput: true,
   time_24hr: true,
   defaultDate: new Date(),
   minuteIncrement: 1,
   onClose(selectedDates) {
-    if (selectedDates[0] < new Date()) {
-      return Notiflix.Report.failure('Ой, що сталося?', 'ви обрали не валідну дату!');
+    if (selectedDates[0] <= Date.now()) {
+      Notiflix.Notify.failure('Please choose a date in the future');
+      btn.disabled = true;
+    } else {
+      btn.disabled = false;
+
+      Notiflix.Notify.success('Lets go?');
     }
-    startBtn.classList.remove('js-main-button');
-    startBtn.disabled = false;
   },
 });
 
-function updateTimer() {
-  const currentDate = new Date();
-  const selectedDate = fp.selectedDates[0];
+btn.addEventListener('click', onBtnStartClick);
 
-  const totalSeconds = Math.floor(((selectedDate.getTime() - currentDate.getTime()) / 1000));
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = Math.floor(totalSeconds % 60);
+function onBtnStartClick() {
+  spans.forEach(item => item.classList.toggle('end'));
+  btn.disabled = true;
+  date.disabled = true;
+  timerId = setInterval(() => {
+    const choosenDate = new Date(date.value);
+    const timeToFinish = choosenDate - Date.now();
+    const { days, hours, minutes, seconds } = convertMs(timeToFinish);
 
-  daysEl.textContent = days.toString().padStart(2, '0');
-  hoursEl.textContent = hours.toString().padStart(2, '0');
-  minutesEl.textContent = minutes.toString().padStart(2, '0');
-  secondsEl.textContent = seconds.toString().padStart(2, '0');
+    day.textContent = addLeadingZero(days);
+    hour.textContent = addLeadingZero(hours);
+    min.textContent = addLeadingZero(minutes);
+    sec.textContent = addLeadingZero(seconds);
 
-  if (totalSeconds === 0) {
-    myInput.disabled = false;
-    myInput.classList.remove('js-main-button')
-    clearInterval(intervalId);
-    return;
-    };
+    if (timeToFinish < 1000) {
+      spans.forEach(item => item.classList.toggle('end'));
+      clearInterval(timerId);
+      date.disabled = false;
+    }
+  }, 1000);
 }
 
-let intervalId;
+function convertMs(ms) {
+  // Number of milliseconds per unit of time
+  const second = 1000;
+  const minute = second * 60;
+  const hour = minute * 60;
+  const day = hour * 24;
 
-startBtn.addEventListener('click', () => {
-  intervalId = setInterval(updateTimer, 1000);
+  // Remaining days
+  const days = Math.floor(ms / day);
+  // Remaining hours
+  const hours = Math.floor((ms % day) / hour);
+  // Remaining minutes
+  const minutes = Math.floor(((ms % day) % hour) / minute);
+  // Remaining seconds
+  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
 
-  myInput.disabled = true;
-  myInput.classList.add('js-main-button');
-  startBtn.disabled = true;
-  startBtn.classList.add('js-main-button');
-});
+  return { days, hours, minutes, seconds };
+}
+
+function addLeadingZero(value) {
+  return `${value}`.padStart(2, '0');
+}

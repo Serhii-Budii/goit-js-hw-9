@@ -1,33 +1,45 @@
-import { Notify } from 'notiflix';
-import 'notiflix/dist/notiflix-3.2.6.min.css';
-const form = document.querySelector('form');
+import Notiflix from 'notiflix';
 
-function hendleStartCreatePromise(e) {
-  e.preventDefault()
+const form = document.querySelector('.form');
 
-  const firstDelay = Number(e.target.elements.delay.value);
-  const stepDelay = Number(e.target.elements.step.value);
-  const amount = Number(e.target.elements.amount.value);
+form.addEventListener('submit', onSubmitForm);
 
-  let secondStep = firstDelay;
+function onSubmitForm(evt) {
+  evt.preventDefault();
+  const { delay, step, amount } = evt.currentTarget.elements;
 
-  for (let num = 1; num <= amount; num += 1) {
-    createNewPromise(num, secondStep).then(answer => Notify.success(answer)).catch(answer => Notify.failure(answer));
-    secondStep += stepDelay;
-  };
-};
+  if (delay.value < 0 || step.value < 0 || amount.value < 0) {
+    Notiflix.Notify.warning(`❗ Please enter a positive number`);
+  } else {
+    for (let i = 0; i < amount.value; i++) {
+      let position = i + 1;
+      const delays = Number(delay.value) + step.value * i;
 
-function createNewPromise(num, secondStep) {
-  return new Promise((resolve, reject) => {
+      createPromise(position, delays)
+        .then(({ position, delay }) => {
+          Notiflix.Notify.success(
+            ` Fulfilled promise ${position} in ${delay}ms`
+          );
+        })
+        .catch(({ position, delay }) => {
+          Notiflix.Notify.failure(
+            ` Rejected promise ${position} in ${delay}ms`
+          );
+        });
+    }
+  }
+}
+
+function createPromise(position, delay) {
+  return new Promise((res, rej) => {
     const shouldResolve = Math.random() > 0.3;
+
     setTimeout(() => {
       if (shouldResolve) {
-        resolve(` Fulfilled promise ${num} in ${secondStep}ms`);
+        res({ position, delay });
       } else {
-        reject(` Rejected promise ${num} in ${secondStep}ms`);
+        rej({ position, delay });
       }
-    }, secondStep)
-  })
-};
-
-form.addEventListener('submit', hendleStartCreatePromise);
+    }, delay);
+  });
+}
